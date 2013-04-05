@@ -1,0 +1,18 @@
+{
+	"name": "prom.js",
+	"version": "0.0.0",
+	"description": "A promise/A+ implementation",
+	"author": "A. Matías Quezada <amatiasq@gmail.com>",
+	"dependencies": {},
+	"devDependencies": {
+		"mocha": "1.7.x",
+		"sinon": "1.5.x",
+		"assert": "1.2.x",
+		"jshint": "1.1.x",
+		"promise-tests": "*"
+
+	},
+	"scripts": {
+		"test": "jshint src test && promise-tests all test/promise-tests-adapter && mocha"
+	}
+}
