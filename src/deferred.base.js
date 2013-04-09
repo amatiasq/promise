@@ -1,10 +1,17 @@
+'use strict';
+
+var prom = {
+	then: function() {
+		return Object.create(prom);
+	}
+};
 
 function deferred() {
-	return { promise: 1 };
+	return { promise: Object.create(prom) };
 }
 
 function isPromise(value) {
-	return true;
+	return !!value && typeof value.then === 'function';
 }
 
 

@@ -1,4 +1,6 @@
-var sinon = require('sinon');
+'use strict';
+
+//var sinon = require('sinon');
 var assert = require('assert');
 var deferred = require('../src/deferred.base');
 
@@ -16,18 +18,41 @@ describe('Deferred', function() {
 		sut = deferred();
 	});
 
-	describe('promise property', function() {
+	describe('#promise property', function() {
+
+		var prom;
+		beforeEach(function() {
+			prom = sut.promise;
+		});
+
+		it('should exist', function() {
+			assert.ok('promise' in sut);
+		});
+
 		it('should return true when passed to deferred.isPromise()', function(){
-			assert.ok(deferred.isPromise(sut.promise));
+			assert.ok(deferred.isPromise(prom));
+		});
+		it('should have a "#then()" method', function() {
+			assert.equal(typeof prom.then, 'function');
 		});
 
-		it('should have a ".then()" method', function() {
-
+		describe('#then method', function() {
+			it('should return another promise', function() {
+				assert.ok(deferred.isPromise(prom.then()));
+				assert.notEqual(prom.then(), prom);
+			});
 		});
 	});
 
 
-	it('should have a "promise" property', function() {
-		assert.ok('promise' in sut);
+	describe('#isPromise function', function() {
+		it('should return true when a object with #then() is passed', function() {
+			assert.ok(deferred.isPromise({ then: function() { } }));
+		});
+
+		it('should fail with a simple object', function() {
+			assert.ok(!deferred.isPromise({}));
+		});
 	});
+
 });
