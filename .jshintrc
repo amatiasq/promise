@@ -91,7 +91,8 @@
 		"process",
 		"describe",
 		"it",
-		"beforeEach"
+		"beforeEach",
+		"afterEach"
 	],
 
 	// Ignored Warnings
