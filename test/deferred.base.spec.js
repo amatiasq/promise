@@ -41,13 +41,26 @@ describe('Deferred', function() {
 				assert.equal(typeof prom.then, 'function');
 			});
 
-			describe('#then method', function() {
-				it('should return another promise', function() {
+			describe('#then method return value', function() {
+				it('should be a new promise', function() {
 					assert.ok(deferred.isPromise(prom.then()));
 					assert.notEqual(prom.then(), prom);
 				});
+
+				/*************************************
+				 * WARNING MODAFOKA!!! DISABLED TEST *
+				 *************************************/
+				xit('should be resolved after the first promise has invoked all it\'s callback successfuly', function() {
+					var clock = sinon.useFakeTimers();
+					var spy = sinon.spy();
+					var second = prom.then(spy);
+					prom.resolve();
+					clock.tick(10);
+					assert.equal(second.status === 'resolved');
+				});
 			});
 		});
+
 
 		describe('#resolve method', function() {
 			it('should be a function', function() {
@@ -72,7 +85,7 @@ describe('Deferred', function() {
 			it('should invoke all functions first argument passed to #promise.then() when called on the next event loop', function() {
 				sut.promise.then(spy);
 				sut.resolve();
-				clock.tick(1);
+				clock.tick(10);
 				assert.ok(spy.calledOnce);
 			});
 
@@ -80,7 +93,7 @@ describe('Deferred', function() {
 				var arg = {};
 				sut.promise.then(spy);
 				sut.resolve(arg);
-				clock.tick(1);
+				clock.tick(10);
 				assert.ok(spy.calledWithExactly(arg));
 			});
 
@@ -88,17 +101,33 @@ describe('Deferred', function() {
 				var arg = {};
 				sut.resolve(arg);
 				sut.promise.then(spy);
-				clock.tick(1);
+				clock.tick(10);
 				assert.ok(spy.calledWithExactly(arg));
 			});
 
 			it('should be idempotent', function() {
 				sut.promise.then(spy);
 				sut.resolve();
-				clock.tick(1);
+				clock.tick(10);
 				sut.resolve();
-				clock.tick(1);
+				clock.tick(10);
 				assert.ok(spy.calledOnce);
+			});
+
+			it('should not call the error callback', function() {
+				sut.promise.then(null, spy);
+				sut.resolve();
+				clock.tick(10);
+				assert.ok(!spy.calledOnce);
+			});
+
+			it('#reject should have no effect after a #resolve call', function() {
+				sut.promise.then(null, spy);
+				sut.resolve();
+				sut.reject();
+				clock.tick(10);
+				assert.ok(!spy.calledOnce);
+				assert.equal(sut.promise.status, 'fulfilled');
 			});
 		});
 
@@ -125,7 +154,7 @@ describe('Deferred', function() {
 			it('should invoke all functions second arguments passed to #promise.then() when called on the next event loop', function() {
 				sut.promise.then(null, spy);
 				sut.reject();
-				clock.tick(1);
+				clock.tick(10);
 				assert.ok(spy.calledOnce);
 			});
 
@@ -133,7 +162,7 @@ describe('Deferred', function() {
 				var arg = {};
 				sut.promise.then(null, spy);
 				sut.reject(arg);
-				clock.tick(1);
+				clock.tick(10);
 				assert.ok(spy.calledWithExactly(arg));
 			});
 
@@ -141,8 +170,33 @@ describe('Deferred', function() {
 				var arg = {};
 				sut.reject(arg);
 				sut.promise.then(null, spy);
-				clock.tick(1);
+				clock.tick(10);
 				assert.ok(spy.calledWithExactly(arg));
+			});
+
+			it('should be idempotent', function() {
+				sut.promise.then(spy);
+				sut.resolve();
+				clock.tick(10);
+				sut.resolve();
+				clock.tick(10);
+				assert.ok(spy.calledOnce);
+			});
+
+			it('should not call the normal callback', function() {
+				sut.promise.then(spy);
+				sut.reject();
+				clock.tick(10);
+				assert.ok(!spy.calledOnce);
+			});
+
+			it('#resolve should have no effect after a #reject call', function() {
+				sut.promise.then(spy);
+				sut.reject();
+				sut.resolve();
+				clock.tick(10);
+				assert.ok(!spy.calledOnce);
+				assert.equal(sut.promise.status, 'failed');
 			});
 		});
 	});
@@ -158,4 +212,82 @@ describe('Deferred', function() {
 		});
 	});
 
+	describe('#when method', function() {
+		var clock, spy;
+		beforeEach(function() {
+			clock = sinon.useFakeTimers();
+			spy = sinon.spy();
+		});
+
+		afterEach(function() {
+			clock.restore();
+		});
+
+		describe('when it recives a non-promise', function() {
+			it('should return a promsie fulfilled with the value', function() {
+				var value = 'pepe';
+				var prom = deferred.when(value);
+				assert.ok(deferred.isPromise(prom));
+				prom.then(spy);
+				clock.tick(10);
+				assert.ok(spy.calledWithExactly(value));
+			});
+		});
+
+		describe('when it recives a promise', function() {
+			it('should return a new promise to be resolved when the value is resolved', function() {
+				var arg = 'pepe';
+				var def = deferred();
+				var prom = deferred.when(def.promise);
+				assert.equal(prom.status, 'unfulfilled');
+				def.resolve(arg);
+				clock.tick(10);
+				assert.equal(prom.status, 'fulfilled');
+				prom.then(spy);
+				clock.tick(10);
+				assert.ok(spy.calledWithExactly(arg));
+			});
+
+			it('should return a new promise to be rejected when the value is rejected', function() {
+				var arg = 'pepe';
+				var def = deferred();
+				var prom = deferred.when(def.promise);
+				assert.equal(prom.status, 'unfulfilled');
+				def.reject(arg);
+				clock.tick(10);
+				assert.equal(prom.status, 'failed');
+				prom.then(null, spy);
+				clock.tick(10);
+				assert.ok(spy.calledWithExactly(arg));
+			});
+		});
+
+		describe('when it recives a deferred', function() {
+			it('should return a new promise to be resolved when the value is resolved', function() {
+				var arg = 'pepe';
+				var def = deferred();
+				var prom = deferred.when(def);
+				assert.equal(prom.status, 'unfulfilled');
+				def.resolve(arg);
+				clock.tick(10);
+				assert.equal(prom.status, 'fulfilled');
+				prom.then(spy);
+				clock.tick(10);
+				assert.ok(spy.calledWithExactly(arg));
+			});
+
+			it('should return a new promise to be rejected when the value is rejected', function() {
+				var arg = 'pepe';
+				var def = deferred();
+				var prom = deferred.when(def);
+				assert.equal(prom.status, 'unfulfilled');
+				def.reject(arg);
+				clock.tick(10);
+				assert.equal(prom.status, 'failed');
+				prom.then(null, spy);
+				clock.tick(10);
+				assert.ok(spy.calledWithExactly(arg));
+			});
+		});
+	});
 });

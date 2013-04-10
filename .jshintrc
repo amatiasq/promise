@@ -91,6 +91,8 @@
 		"process",
 		"describe",
 		"it",
+		"xdescribe",
+		"xit",
 		"beforeEach",
 		"afterEach"
 	],
