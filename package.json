@@ -5,7 +5,7 @@
 	"author": "A. Matías Quezada <amatiasq@gmail.com>",
 	"dependencies": {},
 	"devDependencies": {
-		"esprima": "1.2.x",
+		"esprima": "1.0.x",
 		"jshint": "1.1.x",
 
 		"mocha": "1.7.x",
