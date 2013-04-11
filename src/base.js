@@ -6,9 +6,11 @@
 
 'use strict';
 
-//jshint unused:false
-
-var immediate = (typeof setImmediate === 'undefined') ? function(callback) { setTimeout(callback, 0) } : setImmediate;
+// Sinon.js does not mock setImmediate yet so we will redirect it to setTimeout
+//   until this is supported
+var setImmediate = function(callback, args) {
+	setTimeout(callback, 0, args);
+};
 
 function bind(def, value) {
 	if (isDeferred(value))
@@ -150,8 +152,8 @@ var factory = extend.call({
 		this.promise._cbk[action].forEach(function(cbk) { cbk(value) });
 
 		this.promise.then = isResolved ?
-			function(callback) { callback(value) } :
-			function(callback, errback) { errback(value) };
+			function(callback) { setImmediate(callback, value) } :
+			function(callback, errback) { setImmediate(errback, value) };
 	},
 
 	resolve: function(value) {

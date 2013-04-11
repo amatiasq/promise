@@ -94,9 +94,7 @@
 		"xdescribe",
 		"xit",
 		"beforeEach",
-		"afterEach",
-
-		"setImmediate"
+		"afterEach"
 	],
 
 	// Ignored Warnings

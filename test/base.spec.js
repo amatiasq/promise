@@ -99,8 +99,6 @@ module.exports = function(deferred) {
 
 
 			function testAction(action, status) {
-				//jshint unused:false, -W027
-
 				var isResolve = action === 'resolve';
 				var opposite = isResolve ? 'reject' : 'resolve';
 
@@ -145,10 +143,11 @@ module.exports = function(deferred) {
 					assert.ok(spy.calledWithExactly(arg));
 				});
 
-				it('should do it even if #promise.then() is invoked after #' + action, function() {
+				it('should do it even if #promise.then() is invoked after #' + action + ' but not on the same event loop', function() {
 					var arg = {};
 					sut[action](arg);
 					invokeThen(sut.promise, spy);
+					assert.ok(!spy.called);
 					clock.tick(10);
 					assert.ok(spy.calledWithExactly(arg));
 				});
