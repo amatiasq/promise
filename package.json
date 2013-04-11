@@ -8,13 +8,13 @@
 		"esprima": "1.0.x",
 		"jshint": "1.1.x",
 
-		"mocha": "1.7.x",
+		"mocha": "1.9.x",
 		"sinon": "1.5.x",
 		"assert": "0.4.x",
 		"promise-tests": "*"
 
 	},
 	"scripts": {
-		"test": "esvalidate src/* test/* && jshint src test && mocha # promise-tests all test/promise-tests-adapter && mocha"
+		"test": "esvalidate src/* test/* && jshint src test && mocha test/run # promise-tests all test/promise-tests-adapter && mocha test/run"
 	}
 }
