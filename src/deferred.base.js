@@ -1,4 +1,17 @@
+// W003 Is the warning about variables and function used before they are defined
+//jshint -W003
 'use strict';
+
+function bind(def, value) {
+	if (isDeferred(value))
+		value = value.promise;
+
+	if (!isPromise(value))
+		return def.resolve(value);
+
+	value.then(def.resolve.bind('resolve'), def.reject.bind('reject'));
+	return def.promise;
+}
 
 var prom = {
 	status: 'unfulfilled',
@@ -9,11 +22,30 @@ var prom = {
 	},
 
 	then: function(callback, errcall) {
+		var def = deferred();
+
+		function okCbk(value) {
+			try {
+				bind(def, callback(value));
+			} catch(err) {
+				def.reject(err);
+			}
+		}
+
+		function failCbk(reason) {
+			try {
+				bind(def, errcall(reason));
+			} catch(err) {
+				def.reject(err);
+			}
+		}
+
 		if (typeof callback === 'function')
-			this._cbk.resolve.push(callback);
+			this._cbk.resolve.push(okCbk);
 		if (typeof errcall === 'function')
-			this._cbk.reject.push(errcall);
-		return Object.create(prom);
+			this._cbk.reject.push(failCbk);
+
+		return def.promise;
 	},
 };
 

@@ -42,22 +42,58 @@ describe('Deferred', function() {
 			});
 
 			describe('#then method return value', function() {
+				var clock, spy, value;
+				beforeEach(function() {
+					clock = sinon.useFakeTimers();
+					spy = sinon.spy();
+					value = {};
+				});
+
+				afterEach(function() {
+					clock.restore();
+				});
+
 				it('should be a new promise', function() {
 					assert.ok(deferred.isPromise(prom.then()));
 					assert.notEqual(prom.then(), prom);
 				});
 
-				/*************************************
-				 * WARNING MODAFOKA!!! DISABLED TEST *
-				 *************************************/
-				xit('should be resolved after the first promise has invoked all it\'s callback successfuly', function() {
-					var clock = sinon.useFakeTimers();
-					var spy = sinon.spy();
-					var second = prom.then(spy);
-					prom.resolve();
+				it('should be resolved with the value returned by the success callback', function() {
+					var second = prom.then(function() { return value });
+					second.then(spy, null);
+					sut.resolve();
 					clock.tick(10);
-					assert.equal(second.status === 'resolved');
+					assert.equal(second.status, 'fulfilled');
+					assert.ok(spy.calledWithExactly(value));
 				});
+
+				it('should be resolved with the value returned by the error callback', function() {
+					var second = prom.then(null, function() { return value });
+					second.then(spy, null);
+					sut.reject();
+					clock.tick(10);
+					assert.equal(second.status, 'fulfilled');
+					assert.ok(spy.calledWithExactly(value));
+				});
+
+				it('should be rejected if the success callback throws an error with this error as the reason', function() {
+					var second = prom.then(function() { throw value });
+					second.then(null, spy);
+					sut.resolve();
+					clock.tick(10);
+					assert.equal(second.status, 'failed');
+					assert.ok(spy.calledWithExactly(value));
+				});
+
+				it('should be rejected if the error callback throws an error with this error as the reason', function() {
+					var second = prom.then(null, function() { throw value });
+					second.then(null, spy);
+					sut.reject();
+					clock.tick(10);
+					assert.equal(second.status, 'failed');
+					assert.ok(spy.calledWithExactly(value));
+				});
+
 			});
 		});
 
