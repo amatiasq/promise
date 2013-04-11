@@ -2,6 +2,7 @@
 //jshint -W003
 'use strict';
 
+function noop() { }
 function bind(def, value) {
 	if (isDeferred(value))
 		value = value.promise;
@@ -13,63 +14,81 @@ function bind(def, value) {
 	return def.promise;
 }
 
-var prom = {
-	status: 'unfulfilled',
-
-	init: function() {
-		this._cbk = { resolve: [], reject: [] };
-		return this;
-	},
-
-	then: function(callback, errcall) {
-		var def = deferred();
-
-		function okCbk(value) {
-			try {
-				bind(def, callback(value));
-			} catch(err) {
-				def.reject(err);
-			}
-		}
-
-		function failCbk(reason) {
-			try {
-				bind(def, errcall(reason));
-			} catch(err) {
-				def.reject(err);
-			}
-		}
-
-		if (typeof callback === 'function')
-			this._cbk.resolve.push(okCbk);
-		if (typeof errcall === 'function')
-			this._cbk.reject.push(failCbk);
-
-		return def.promise;
-	},
-};
-
-function deferred() {
-	return {
-		promise: Object.create(prom).init(),
-
-		resolve: function(value) {
-			this.promise.status = 'fulfilled';
-			this.promise._cbk.resolve.forEach(function(a) { a(value) });
-			this.promise.then = function(callback) { callback(value); };
-			this.resolve = function() { };
-			this.reject = function() { };
-		},
-
-		reject: function(reason) {
-			this.promise.status = 'failed';
-			this.promise._cbk.reject.forEach(function(a) { a(reason) });
-			this.promise.then = function(callback, errcall) { errcall(reason) };
-			this.resolve = function() { };
-			this.reject = function() { };
+function wrap(def, callback) {
+	return function(value) {
+		try {
+			bind(def, callback(value));
+		} catch(err) {
+			def.reject(err);
 		}
 	};
 }
+
+function Promise() {
+	this.init();
+}
+Promise.prototype = {
+	init: function() {
+		this.status = 'unfulfilled';
+		this._cbk = { resolve: [], reject: [] };
+	},
+
+	then: function(callback, errback) {
+		var def = deferred();
+
+		if (typeof callback === 'function')
+			this._cbk.resolve.push(wrap(def, callback));
+
+		if (typeof errback === 'function')
+			this._cbk.reject.push(wrap(def, errback));
+
+		return def.promise;
+	}
+};
+
+function Deferred() {
+	this.promise = new Promise();
+	this.init();
+}
+Deferred.prototype = {
+	get status() {
+		return this.promise.status;
+	},
+
+	init: function() {
+		this.resolve = this.resolve.bind(this);
+		this.reject = this.reject.bind(this);
+	},
+
+	_complete: function(action, value) {
+		if (this.promise.status !== 'unfulfilled')
+			return;
+
+		var isResolved = action === 'resolve';
+		this.promise.status = isResolved ? 'fulfilled' : 'failed';
+		this.promise._cbk[action].forEach(function(cbk) { cbk(value) });
+
+		this.promise.then = isResolved ?
+			function(callback) { callback(value) } :
+			function(callback, errback) { errback(value) };
+
+		this.resolve = noop;
+		this.reject = noop;
+	},
+
+	resolve: function(value) {
+		this._complete('resolve', value);
+	},
+
+	reject: function(value) {
+		this._complete('reject', value);
+	}
+};
+
+function deferred() {
+	return new Deferred();
+}
+
 
 function isPromise(value) {
 	return !!value && typeof value.then === 'function';
@@ -92,7 +111,7 @@ function when(value) {
 	return def.promise;
 }
 
-
+deferred.isDeferred = isDeferred;
 deferred.isPromise = isPromise;
 deferred.when = when;
 module.exports = deferred;

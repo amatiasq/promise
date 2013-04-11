@@ -98,9 +98,21 @@ describe('Deferred', function() {
 		});
 
 
-		describe('#resolve method', function() {
+		function testAction(action, status) {
+			//jshint unused:false, -W027
+
+			var isResolve = action === 'resolve';
+			var opposite = isResolve ? 'reject' : 'resolve';
+
+			function invokeThen(promise, callback, revert) {
+				if ((!revert && isResolve) || (revert && !isResolve))
+					return promise.then(callback);
+				else
+					return promise.then(null, callback);
+			}
+
 			it('should be a function', function() {
-				assert.equal(typeof sut.resolve, 'function');
+				assert.equal(typeof sut[action], 'function');
 			});
 
 			var clock, spy;
@@ -113,127 +125,67 @@ describe('Deferred', function() {
 				clock.restore();
 			});
 
-			it('should change promise status to "fulfilled"', function() {
-				sut.resolve();
-				assert.equal(sut.promise.status, 'fulfilled');
+			it('should change promise status to "' + status + '"', function() {
+				sut[action]();
+				assert.equal(sut.promise.status, status);
 			});
 
-			it('should invoke all functions first argument passed to #promise.then() when called on the next event loop', function() {
-				sut.promise.then(spy);
-				sut.resolve();
+			it('should invoke all functions ' + (isResolve ? 'first' : 'second') + ' argument passed to #promise.then() when called on the next event loop', function() {
+				invokeThen(sut.promise, spy);
+				sut[action]();
 				clock.tick(10);
 				assert.ok(spy.calledOnce);
 			});
 
 			it('should pass it\'s argument to every callback', function() {
 				var arg = {};
-				sut.promise.then(spy);
-				sut.resolve(arg);
+				invokeThen(sut.promise, spy);
+				sut[action](arg);
 				clock.tick(10);
 				assert.ok(spy.calledWithExactly(arg));
 			});
 
-			it('should do it even if #promise.then() is invoked after #resolve', function() {
+			it('should do it even if #promise.then() is invoked after #' + action, function() {
 				var arg = {};
-				sut.resolve(arg);
-				sut.promise.then(spy);
+				sut[action](arg);
+				invokeThen(sut.promise, spy);
 				clock.tick(10);
 				assert.ok(spy.calledWithExactly(arg));
 			});
 
 			it('should be idempotent', function() {
-				sut.promise.then(spy);
-				sut.resolve();
+				invokeThen(sut.promise, spy);
+				sut[action]();
 				clock.tick(10);
-				sut.resolve();
+				sut[action]();
 				clock.tick(10);
 				assert.ok(spy.calledOnce);
 			});
 
-			it('should not call the error callback', function() {
-				sut.promise.then(null, spy);
-				sut.resolve();
+			it('should not call the ' + (isResolve ? 'error' : 'success') + ' callback', function() {
+				invokeThen(sut.promise, spy, true);
+				sut[action]();
 				clock.tick(10);
 				assert.ok(!spy.calledOnce);
 			});
 
-			it('#reject should have no effect after a #resolve call', function() {
-				sut.promise.then(null, spy);
-				sut.resolve();
-				sut.reject();
+			it('#' + opposite + ' should have no effect after a #' + action + ' call', function() {
+				invokeThen(sut.promise, spy, true);
+				sut[action]();
+				sut[opposite]();
 				clock.tick(10);
 				assert.ok(!spy.calledOnce);
-				assert.equal(sut.promise.status, 'fulfilled');
+				assert.equal(sut.promise.status, status);
 			});
+		}
+
+
+		describe('#resolve method', function() {
+			return testAction('resolve', 'fulfilled');
 		});
 
 		describe('#reject method', function() {
-			it('should be a function', function() {
-				assert.equal(typeof sut.reject, 'function');
-			});
-
-			var clock, spy;
-			beforeEach(function() {
-				clock = sinon.useFakeTimers();
-				spy = sinon.spy();
-			});
-
-			afterEach(function() {
-				clock.restore();
-			});
-
-			it('should change promise status to "failed"', function() {
-				sut.reject();
-				assert.equal(sut.promise.status, 'failed');
-			});
-
-			it('should invoke all functions second arguments passed to #promise.then() when called on the next event loop', function() {
-				sut.promise.then(null, spy);
-				sut.reject();
-				clock.tick(10);
-				assert.ok(spy.calledOnce);
-			});
-
-			it('should pass it\'s argument to every callback', function() {
-				var arg = {};
-				sut.promise.then(null, spy);
-				sut.reject(arg);
-				clock.tick(10);
-				assert.ok(spy.calledWithExactly(arg));
-			});
-
-			it('should do it even if #promise.then() is invoked after #reject', function() {
-				var arg = {};
-				sut.reject(arg);
-				sut.promise.then(null, spy);
-				clock.tick(10);
-				assert.ok(spy.calledWithExactly(arg));
-			});
-
-			it('should be idempotent', function() {
-				sut.promise.then(spy);
-				sut.resolve();
-				clock.tick(10);
-				sut.resolve();
-				clock.tick(10);
-				assert.ok(spy.calledOnce);
-			});
-
-			it('should not call the normal callback', function() {
-				sut.promise.then(spy);
-				sut.reject();
-				clock.tick(10);
-				assert.ok(!spy.calledOnce);
-			});
-
-			it('#resolve should have no effect after a #reject call', function() {
-				sut.promise.then(spy);
-				sut.reject();
-				sut.resolve();
-				clock.tick(10);
-				assert.ok(!spy.calledOnce);
-				assert.equal(sut.promise.status, 'failed');
-			});
+			return testAction('reject', 'failed');
 		});
 	});
 
@@ -270,59 +222,45 @@ describe('Deferred', function() {
 			});
 		});
 
+		function invoke(def, value, action) {
+			var arg = 'pepe';
+			var status = action === 'resolve' ? 'fulfilled' : 'failed';
+			var prom = deferred.when(value);
+			assert.equal(prom.status, 'unfulfilled');
+			def[action](arg);
+			clock.tick(10);
+			assert.equal(prom.status, status);
+
+			if (action === 'resolve')
+				prom.then(spy);
+			else
+				prom.then(null, spy);
+
+			clock.tick(10);
+			assert.ok(spy.calledWithExactly(arg));
+		}
+
 		describe('when it recives a promise', function() {
 			it('should return a new promise to be resolved when the value is resolved', function() {
-				var arg = 'pepe';
 				var def = deferred();
-				var prom = deferred.when(def.promise);
-				assert.equal(prom.status, 'unfulfilled');
-				def.resolve(arg);
-				clock.tick(10);
-				assert.equal(prom.status, 'fulfilled');
-				prom.then(spy);
-				clock.tick(10);
-				assert.ok(spy.calledWithExactly(arg));
+				invoke(def, def.promise, 'resolve');
 			});
 
 			it('should return a new promise to be rejected when the value is rejected', function() {
-				var arg = 'pepe';
 				var def = deferred();
-				var prom = deferred.when(def.promise);
-				assert.equal(prom.status, 'unfulfilled');
-				def.reject(arg);
-				clock.tick(10);
-				assert.equal(prom.status, 'failed');
-				prom.then(null, spy);
-				clock.tick(10);
-				assert.ok(spy.calledWithExactly(arg));
+				invoke(def, def.promise, 'reject');
 			});
 		});
 
 		describe('when it recives a deferred', function() {
 			it('should return a new promise to be resolved when the value is resolved', function() {
-				var arg = 'pepe';
 				var def = deferred();
-				var prom = deferred.when(def);
-				assert.equal(prom.status, 'unfulfilled');
-				def.resolve(arg);
-				clock.tick(10);
-				assert.equal(prom.status, 'fulfilled');
-				prom.then(spy);
-				clock.tick(10);
-				assert.ok(spy.calledWithExactly(arg));
+				invoke(def, def, 'resolve');
 			});
 
 			it('should return a new promise to be rejected when the value is rejected', function() {
-				var arg = 'pepe';
 				var def = deferred();
-				var prom = deferred.when(def);
-				assert.equal(prom.status, 'unfulfilled');
-				def.reject(arg);
-				clock.tick(10);
-				assert.equal(prom.status, 'failed');
-				prom.then(null, spy);
-				clock.tick(10);
-				assert.ok(spy.calledWithExactly(arg));
+				invoke(def, def, 'reject');
 			});
 		});
 	});
