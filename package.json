@@ -1,6 +1,6 @@
 {
 	"name": "prom.js",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"description": "A promise/A+ implementation",
 	"author": "A. Matías Quezada <amatiasq@gmail.com>",
 	"dependencies": {},

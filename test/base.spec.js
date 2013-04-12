@@ -223,10 +223,11 @@ module.exports = function(deferred) {
 				it('should return a promsie fulfilled with the value', function() {
 					var value = 'pepe';
 					var prom = deferred.when(value);
-					assert.ok(deferred.isPromise(prom));
+					assert.ok(deferred.isPromise(prom), 'returned value is not a promise');
 					prom.then(spy);
 					clock.tick(10);
-					assert.ok(spy.calledWithExactly(value));
+					assert.ok(spy.calledOnce, 'callback was not called');
+					assert.ok(spy.calledWithExactly(value), 'the promise does not have the expected value');
 				});
 			});
 
@@ -269,6 +270,28 @@ module.exports = function(deferred) {
 				it('should return a new promise to be rejected when the value is rejected', function() {
 					var def = deferred();
 					invoke(def, def, 'reject');
+				});
+			});
+
+			describe('callback arguments', function() {
+				it('should invoke success callback as soon as the value is available but at least on the next event loop', function() {
+					var prom = deferred.when('hola', function() { return 'pepe' });
+					prom.then(spy);
+					assert.ok(!spy.called);
+					clock.tick(10);
+					assert.equal(prom.status, 'fulfilled');
+					assert.ok(spy.calledWithExactly('pepe'));
+				});
+
+				it('should invoke error callback if the value is a rejected promise', function() {
+					var def = deferred();
+					var prom = deferred.when(def.promise, null, function() { throw 'pepe' });
+					def.reject();
+					prom.then(null, spy);
+					assert.ok(!spy.called);
+					clock.tick(10);
+					assert.equal(prom.status, 'failed');
+					assert.ok(spy.calledWithExactly('pepe'));
 				});
 			});
 		});
