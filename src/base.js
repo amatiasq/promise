@@ -49,18 +49,27 @@ function isDeferred(value) {
 	return !!value && isPromise(value.promise);
 }
 
-function when(value) {
-	var def = this();
+function when(value, callback, errback) {
+	var def, prom;
 
-	if (isDeferred(value))
-		value = value.promise;
-
-	if (isPromise(value))
-		value.then(def.resolve.bind(def), def.reject.bind(def));
-	else
+	if (isDeferred(value)) {
+		prom = value.promise;
+	} else if (isPromise(value)) {
+		prom = value;
+	} else {
+		def = this();
 		def.resolve(value);
+		prom = def.promise;
+	}
 
-	return def.promise;
+	// HACK: Any call to .then without arguments will fail
+	//   remove this when issue #11 is fixed
+	if (typeof callback !== 'function')
+		callback = function(value) { return value };
+	if (typeof errback !== 'function')
+		errback = function(reason) { throw reason };
+
+	return prom.then(callback, errback);
 }
 
 
@@ -154,7 +163,11 @@ var factory = extend.call({
 
 		this.promise.then = function(callback, errback) {
 			var def = factory();
-			setImmediate(wrap(def, isResolved ? callback : errback), value);
+			var cbk = isResolved ? callback : errback;
+
+			if (typeof cbk === 'function')
+				setImmediate(wrap(def, cbk), value);
+
 			return def.promise;
 		};
 	},
