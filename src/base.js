@@ -12,6 +12,10 @@ var setImmediate = function(callback, args) {
 	setTimeout(callback, 0, args);
 };
 
+function isFn(obj) {
+	return typeof obj === 'function';
+}
+
 function bind(def, value) {
 	if (isDeferred(value))
 		value = value.promise;
@@ -61,13 +65,6 @@ function when(value, callback, errback) {
 		def.resolve(value);
 		prom = def.promise;
 	}
-
-	// HACK: Any call to .then without arguments will fail
-	//   remove this when issue #11 is fixed
-	if (typeof callback !== 'function')
-		callback = function(value) { return value };
-	if (typeof errback !== 'function')
-		errback = function(reason) { throw reason };
 
 	return prom.then(callback, errback);
 }
@@ -129,13 +126,8 @@ var factory = extend.call({
 
 	then: function(callback, errback) {
 		var def = this._factory();
-
-		if (typeof callback === 'function')
-			this._cbk.resolve.push(wrap(def, callback));
-
-		if (typeof errback === 'function')
-			this._cbk.reject.push(wrap(def, errback));
-
+		this._cbk.resolve.push(isFn(callback) ? wrap(def, callback) : def.resolve);
+		this._cbk.reject.push(isFn(errback) ? wrap(def, errback) : def.reject);
 		return def.promise;
 	},
 
@@ -165,8 +157,10 @@ var factory = extend.call({
 			var def = factory();
 			var cbk = isResolved ? callback : errback;
 
-			if (typeof cbk === 'function')
+			if (isFn(cbk))
 				setImmediate(wrap(def, cbk), value);
+			else
+				setImmediate(def[action], value);
 
 			return def.promise;
 		};
