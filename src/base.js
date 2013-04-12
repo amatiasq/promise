@@ -147,13 +147,16 @@ var factory = extend.call({
 		if (this.promise.status !== 'unfulfilled')
 			return;
 
+		var factory = this._factory;
 		var isResolved = action === 'resolve';
 		this.promise.status = isResolved ? 'fulfilled' : 'failed';
 		this.promise._cbk[action].forEach(function(cbk) { cbk(value) });
 
-		this.promise.then = isResolved ?
-			function(callback) { setImmediate(callback, value) } :
-			function(callback, errback) { setImmediate(errback, value) };
+		this.promise.then = function(callback, errback) {
+			var def = factory();
+			setImmediate(wrap(def, isResolved ? callback : errback), value);
+			return def.promise;
+		};
 	},
 
 	resolve: function(value) {
