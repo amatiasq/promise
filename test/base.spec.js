@@ -60,7 +60,7 @@ module.exports = function(deferred) {
 
 					it('should be resolved with the value returned by the success callback', function() {
 						var second = prom.then(function() { return value });
-						second.then(spy, null);
+						second.then(spy);
 						sut.resolve();
 						clock.tick(10);
 						assert.equal(second.status, 'fulfilled');
@@ -69,7 +69,7 @@ module.exports = function(deferred) {
 
 					it('should be resolved with the value returned by the error callback', function() {
 						var second = prom.then(null, function() { return value });
-						second.then(spy, null);
+						second.then(spy);
 						sut.reject();
 						clock.tick(10);
 						assert.equal(second.status, 'fulfilled');
@@ -94,6 +94,15 @@ module.exports = function(deferred) {
 						assert.ok(spy.calledWithExactly(value));
 					});
 
+					it('should keep returning a promise even after the owner promise is completed', function() {
+						sut.resolve('hola');
+						var value = 'pepe';
+						var second = prom.then(function() { return value });
+						second.then(spy);
+						clock.tick(10);
+						assert.equal(second.status, 'fulfilled');
+						assert.ok(spy.calledWithExactly(value));
+					});
 				});
 			});
 
