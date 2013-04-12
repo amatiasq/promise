@@ -103,6 +103,41 @@ module.exports = function(deferred) {
 						assert.equal(second.status, 'fulfilled');
 						assert.ok(spy.calledWithExactly(value));
 					});
+
+					describe('will be a promise than', function() {
+
+						function testThenEmptyCall(status, delegate) {
+							var value = 'pepe';
+							var second = prom.then();
+							delegate(second, value);
+							clock.tick(10);
+							assert.equal(second.status, status, 'promise was not completed');
+							assert.ok(spy.called, 'promise did not call the callback');
+							assert.ok(spy.calledWithExactly(value), 'promise was not completed with the value');
+						}
+
+						it('must success if the original promise succeed', function() {
+							testThenEmptyCall('fulfilled', function(prom, value) {
+								prom.then(spy);
+								sut.resolve(value);
+							});
+						});
+
+						it('must fail if the original promise fails', function() {
+							testThenEmptyCall('failed', function(prom, value) {
+								prom.then(null, spy);
+								sut.reject(value);
+							});
+						});
+
+						it('must be completed even if the promise was completed before #then() was called', function() {
+							testThenEmptyCall('fulfilled', function(prom, value) {
+								sut.resolve(value);
+								prom.then(spy);
+								assert.ok(!spy.called, 'promise invoked the callback on the same loop');
+							});
+						});
+					});
 				});
 			});
 
