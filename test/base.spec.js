@@ -7,27 +7,24 @@ var assert = require('assert');
 module.exports = function(deferred) {
 
 	function testImplementation(deferred) {
-		it('module should be a callable function', function() {
-			assert.equal(typeof deferred, 'function');
+
+		var def;
+		beforeEach(function() {
+			def = deferred();
 		});
 		it('module return value should be thruthy', function() {
 			assert.ok(deferred());
 		});
 
-		describe('object', function() {
-			var sut;
-			beforeEach(function() {
-				sut = deferred();
-			});
-
+		describe('a deferred object\'s', function() {
 			describe('#promise property', function() {
 				var prom;
 				beforeEach(function() {
-					prom = sut.promise;
+					prom = def.promise;
 				});
 
 				it('should exist', function() {
-					assert.ok('promise' in sut);
+					assert.ok('promise' in def);
 				});
 
 				it('should have "unfulfilled" as default status', function() {
@@ -41,12 +38,14 @@ module.exports = function(deferred) {
 					assert.equal(typeof prom.then, 'function');
 				});
 
-				describe('#then method return value', function() {
-					var clock, spy, value;
+				describe('when #then method is invoked', function() {
+					var value = 'pepe';
+					var clock, spy, prom;
 					beforeEach(function() {
 						clock = sinon.useFakeTimers();
 						spy = sinon.spy();
-						value = {};
+
+						prom = def.promise;
 					});
 
 					afterEach(function() {
@@ -61,7 +60,7 @@ module.exports = function(deferred) {
 					it('should be resolved with the value returned by the success callback', function() {
 						var second = prom.then(function() { return value });
 						second.then(spy);
-						sut.resolve();
+						def.resolve();
 						clock.tick(10);
 						assert.equal(second.status, 'fulfilled');
 						assert.ok(spy.calledWithExactly(value));
@@ -70,7 +69,7 @@ module.exports = function(deferred) {
 					it('should be resolved with the value returned by the error callback', function() {
 						var second = prom.then(null, function() { return value });
 						second.then(spy);
-						sut.reject();
+						def.reject();
 						clock.tick(10);
 						assert.equal(second.status, 'fulfilled');
 						assert.ok(spy.calledWithExactly(value));
@@ -79,33 +78,61 @@ module.exports = function(deferred) {
 					it('should be rejected if the success callback throws an error with this error as the reason', function() {
 						var second = prom.then(function() { throw value });
 						second.then(null, spy);
-						sut.resolve();
+						def.resolve();
 						clock.tick(10);
 						assert.equal(second.status, 'failed');
 						assert.ok(spy.calledWithExactly(value));
 					});
 
-					it('should be rejected if the error callback throws an error with this error as the reason', function() {
-						var second = prom.then(null, function() { throw value });
-						second.then(null, spy);
-						sut.reject();
-						clock.tick(10);
-						assert.equal(second.status, 'failed');
-						assert.ok(spy.calledWithExactly(value));
-					});
+					function testCallback(action, operation) {
+						function check(prom, status) {
+							clock.tick(10);
+							assert.equal(prom.status, status);
+							assert.ok(spy.calledWithExactly(value));
+						}
 
-					it('should keep returning a promise even after the owner promise is completed', function() {
-						sut.resolve('hola');
-						var value = 'pepe';
-						var second = prom.then(function() { return value });
-						second.then(spy);
-						clock.tick(10);
-						assert.equal(second.status, 'fulfilled');
-						assert.ok(spy.calledWithExactly(value));
-					});
+						describe('and the callback returns a value', function() {
+							it('should be resolved with this value', function() {
+								var second = operation(prom, function() { return value });
+								second.then(spy);
+								def[action]();
+								check(second, 'fulfilled');
+							});
+						});
 
-					describe('will be a promise than', function() {
+						describe('and the callback throws an error', function() {
+							it('should be rejected with this error as the reason', function() {
+								var second = operation(prom, function() { throw value });
+								second.then(null, spy);
+								def[action]();
+								check(second, 'failed');
+							});
+						});
 
+						describe('and a callback is added after', function() {
+							describe('and the callback returns a value', function() {
+								it('should be resolved with this value on the next event loop', function() {
+									var second = operation(prom, function() { return value });
+									def[action]();
+									second.then(spy);
+									assert.ok(!spy.called, 'it was called on the same event loop');
+									check(second, 'fulfilled');
+								});
+							});
+
+							describe('and the callback throws an error', function() {
+								it('should be rejected with this error as the reason on the next event loop', function() {
+									var second = operation(prom, function() { throw value });
+									def[action]();
+									second.then(null, spy);
+									assert.ok(!spy.called, 'callback was called on the same event loop');
+									check(second, 'failed');
+								});
+							});
+						});
+					}
+
+					describe('without arguments the returned promise', function() {
 						function testThenEmptyCall(status, delegate) {
 							var value = 'pepe';
 							var second = prom.then();
@@ -119,122 +146,135 @@ module.exports = function(deferred) {
 						it('must success if the original promise succeed', function() {
 							testThenEmptyCall('fulfilled', function(prom, value) {
 								prom.then(spy);
-								sut.resolve(value);
+								def.resolve(value);
 							});
 						});
 
 						it('must fail if the original promise fails', function() {
 							testThenEmptyCall('failed', function(prom, value) {
 								prom.then(null, spy);
-								sut.reject(value);
+								def.reject(value);
 							});
 						});
 
 						it('must be completed even if the promise was completed before #then() was called', function() {
 							testThenEmptyCall('fulfilled', function(prom, value) {
-								sut.resolve(value);
+								def.resolve(value);
 								prom.then(spy);
 								assert.ok(!spy.called, 'promise invoked the callback on the same loop');
 							});
 						});
 					});
+
+					describe('the returned promise', function() {
+						describe('when the original promise is resolved', function() {
+							testCallback('resolve', function(promise, callback) {
+								return promise.then(callback);
+							});
+						});
+
+						describe('when the original promise is rejected', function() {
+							testCallback('reject', function(promise, callback) {
+								return promise.then(null, callback);
+							});
+						});
+					});
 				});
-			});
+
+				function testAction(action) {
+					var isResolve = action === 'resolve';
+					var opposite = isResolve ? 'reject' : 'resolve';
+					var status = isResolve ? 'fulfilled' : 'failed';
+
+					function invokeThen(promise, callback, revert) {
+						if ((!revert && isResolve) || (revert && !isResolve))
+							return promise.then(callback);
+						else
+							return promise.then(null, callback);
+					}
+
+					var clock, spy;
+					beforeEach(function() {
+						clock = sinon.useFakeTimers();
+						spy = sinon.spy();
+					});
 
 
-			function testAction(action, status) {
-				var isResolve = action === 'resolve';
-				var opposite = isResolve ? 'reject' : 'resolve';
+					it('should change promise status to "' + status + '"', function() {
+						def[action]();
+						assert.equal(def.promise.status, status);
+					});
 
-				function invokeThen(promise, callback, revert) {
-					if ((!revert && isResolve) || (revert && !isResolve))
-						return promise.then(callback);
-					else
-						return promise.then(null, callback);
+					it('should invoke all functions ' + (isResolve ? 'first' : 'second') + ' argument passed to #promise.then() when called on the next event loop', function() {
+						invokeThen(def.promise, spy);
+						def[action]();
+						clock.tick(10);
+						assert.ok(spy.calledOnce);
+					});
+
+					it('should pass it\'s argument to every callback', function() {
+						var arg = {};
+						invokeThen(def.promise, spy);
+						def[action](arg);
+						clock.tick(10);
+						assert.ok(spy.calledWithExactly(arg));
+					});
+
+					it('should not call the ' + (isResolve ? 'error' : 'success') + ' callback', function() {
+						invokeThen(def.promise, spy, true);
+						def[action]();
+						clock.tick(10);
+						assert.ok(!spy.calledOnce);
+					});
+
+					describe('before #promise.then', function() {
+						it('should pass it\'s argument to every callback on the next event loop', function() {
+							var arg = {};
+							def[action](arg);
+							invokeThen(def.promise, spy);
+							assert.ok(!spy.called, 'callback was called on the same event loop');
+							clock.tick(10);
+							assert.ok(spy.calledWithExactly(arg), 'callback didn\'t recived the value');
+						});
+					});
+
+					describe('more than once', function() {
+						it('should be idempotent', function() {
+							invokeThen(def.promise, spy);
+							def[action]();
+							clock.tick(10);
+							def[action]();
+							clock.tick(10);
+							assert.ok(spy.calledOnce);
+						});
+					});
+
+					describe('#' + opposite, function() {
+						it('should have no effect', function() {
+							invokeThen(def.promise, spy, true);
+							def[action]();
+							def[opposite]();
+							clock.tick(10);
+							assert.ok(!spy.calledOnce);
+							assert.equal(def.promise.status, status);
+						});
+					});
 				}
 
-				it('should be a function', function() {
-					assert.equal(typeof sut[action], 'function');
+
+				describe('when #resolve method is invoked', function() {
+					return testAction('resolve');
 				});
 
-				var clock, spy;
-				beforeEach(function() {
-					clock = sinon.useFakeTimers();
-					spy = sinon.spy();
+				describe('when #reject method is invoked', function() {
+					return testAction('reject');
 				});
-
-				afterEach(function() {
-					clock.restore();
-				});
-
-				it('should change promise status to "' + status + '"', function() {
-					sut[action]();
-					assert.equal(sut.promise.status, status);
-				});
-
-				it('should invoke all functions ' + (isResolve ? 'first' : 'second') + ' argument passed to #promise.then() when called on the next event loop', function() {
-					invokeThen(sut.promise, spy);
-					sut[action]();
-					clock.tick(10);
-					assert.ok(spy.calledOnce);
-				});
-
-				it('should pass it\'s argument to every callback', function() {
-					var arg = {};
-					invokeThen(sut.promise, spy);
-					sut[action](arg);
-					clock.tick(10);
-					assert.ok(spy.calledWithExactly(arg));
-				});
-
-				it('should do it even if #promise.then() is invoked after #' + action + ' but not on the same event loop', function() {
-					var arg = {};
-					sut[action](arg);
-					invokeThen(sut.promise, spy);
-					assert.ok(!spy.called);
-					clock.tick(10);
-					assert.ok(spy.calledWithExactly(arg));
-				});
-
-				it('should be idempotent', function() {
-					invokeThen(sut.promise, spy);
-					sut[action]();
-					clock.tick(10);
-					sut[action]();
-					clock.tick(10);
-					assert.ok(spy.calledOnce);
-				});
-
-				it('should not call the ' + (isResolve ? 'error' : 'success') + ' callback', function() {
-					invokeThen(sut.promise, spy, true);
-					sut[action]();
-					clock.tick(10);
-					assert.ok(!spy.calledOnce);
-				});
-
-				it('#' + opposite + ' should have no effect after a #' + action + ' call', function() {
-					invokeThen(sut.promise, spy, true);
-					sut[action]();
-					sut[opposite]();
-					clock.tick(10);
-					assert.ok(!spy.calledOnce);
-					assert.equal(sut.promise.status, status);
-				});
-			}
-
-
-			describe('#resolve method', function() {
-				return testAction('resolve', 'fulfilled');
-			});
-
-			describe('#reject method', function() {
-				return testAction('reject', 'failed');
 			});
 		});
 
 
-		describe('#isPromise function', function() {
-			it('should return true when a object with #then() is passed', function() {
+		describe('when #isPromise function is invoked', function() {
+			it('should return true if a object with #then() is passed as argument', function() {
 				assert.ok(deferred.isPromise({ then: function() { } }));
 			});
 
@@ -243,7 +283,7 @@ module.exports = function(deferred) {
 			});
 		});
 
-		describe('#when method', function() {
+		describe('when #when method is invoked', function() {
 			var clock, spy;
 			beforeEach(function() {
 				clock = sinon.useFakeTimers();
@@ -254,7 +294,7 @@ module.exports = function(deferred) {
 				clock.restore();
 			});
 
-			describe('when it recives a non-promise', function() {
+			describe('and it recives a non-promise', function() {
 				it('should return a promsie fulfilled with the value', function() {
 					var value = 'pepe';
 					var prom = deferred.when(value);
@@ -284,7 +324,7 @@ module.exports = function(deferred) {
 				assert.ok(spy.calledWithExactly(arg));
 			}
 
-			describe('when it recives a promise', function() {
+			describe('if it recives a promise', function() {
 				it('should return a new promise to be resolved when the value is resolved', function() {
 					var def = deferred();
 					invoke(def, def.promise, 'resolve');
@@ -296,7 +336,7 @@ module.exports = function(deferred) {
 				});
 			});
 
-			describe('when it recives a deferred', function() {
+			describe('if it recives a deferred', function() {
 				it('should return a new promise to be resolved when the value is resolved', function() {
 					var def = deferred();
 					invoke(def, def, 'resolve');
@@ -308,7 +348,7 @@ module.exports = function(deferred) {
 				});
 			});
 
-			describe('callback arguments', function() {
+			describe('and it recives callback arguments', function() {
 				it('should invoke success callback as soon as the value is available but at least on the next event loop', function() {
 					var prom = deferred.when('hola', function() { return 'pepe' });
 					prom.then(spy);
@@ -332,71 +372,70 @@ module.exports = function(deferred) {
 		});
 	}
 
-
-	describe('Base deferred component', function() {
-		testImplementation(deferred);
-	});
-
-
-	describe('Deferred extensibility', function() {
+	describe('In order to be extensible', function() {
 		it('should provide a #extend method', function() {
 			assert.equal(typeof deferred.extend, 'function');
 		});
 
-		it('should return a new deferred creator', function() {
-			var newDef = deferred.extend();
+		describe('when #extend method is invoked', function() {
+			it('should return a new deferred factory', function() {
+				var newDef = deferred.extend();
 
-			assert.equal(typeof newDef, 'function');
-			assert.ok(newDef.isDeferred(newDef()));
-			assert.ok(newDef.isPromise(newDef().promise));
-		});
-
-		describe('the new deferred should pass every previous test', function() {
-			testImplementation(deferred.extend());
-		});
-
-		it('should add the properties of the first argument to every promise created with the new factory', function() {
-			var value1 = 1;
-			var value2 = 'pepe';
-			var sut = deferred.extend({
-				a: value1,
-				pepe: function() { return value2 },
+				assert.equal(typeof newDef, 'function', 'new factory is not a function');
+				assert.ok(newDef.isDeferred(newDef()), 'new factory\'s return value is not considered a deferred');
+				assert.ok(newDef.isPromise(newDef().promise), 'new factory\'s return value\'s promise property is not considered a promise');
 			});
 
-			var prom = sut().promise;
-			assert.equal(prom.a, value1);
-			assert.equal(prom.pepe(), value2);
-		});
-
-		it('should not modify the original promise when I add methods to the new one', function() {
-			deferred.extend({
-				test: function() { }
+			describe('the new deferred should pass every previous test', function() {
+				testImplementation(deferred.extend());
 			});
 
-			var prom = deferred().promise;
-			assert.ok(!prom.test);
-		});
+			it('should add the properties of the first argument to every promise created with the new factory', function() {
+				var value1 = 1;
+				var value2 = 'pepe';
+				var factory = deferred.extend({
+					a: value1,
+					pepe: function() { return value2 },
+				});
 
-		it('should add the properties of the second argument to every deferred created with the new factory', function() {
-			var value1 = 1;
-			var value2 = 'pepe';
-			var sut = deferred.extend(null, {
-				a: value1,
-				pepe: function() { return value2 },
+				var prom = factory().promise;
+				assert.equal(prom.a, value1);
+				assert.equal(prom.pepe(), value2);
 			});
 
-			var def = sut();
-			assert.equal(def.a, value1);
-			assert.equal(def.pepe(), value2);
-		});
+			it('should not modify the original promise when I add methods to the new one', function() {
+				deferred.extend({
+					test: function() { }
+				});
 
-		it('should not modify the original promise when I add methods to the new one', function() {
-			deferred.extend(null, {
-				test: function() { }
+				var prom = deferred().promise;
+				assert.ok(!prom.test);
 			});
 
-			var def = deferred();
-			assert.ok(!def.test);
+			it('should add the properties of the second argument to every deferred created with the new factory', function() {
+				var value1 = 1;
+				var value2 = 'pepe';
+				var factory = deferred.extend(null, {
+					a: value1,
+					pepe: function() { return value2 },
+				});
+
+				var def = factory();
+				assert.equal(def.a, value1);
+				assert.equal(def.pepe(), value2);
+			});
+
+			it('should not modify the original promise when I add methods to the new one', function() {
+				deferred.extend(null, {
+					test: function() { }
+				});
+
+				var def = deferred();
+				assert.ok(!def.test);
+			});
 		});
 	});
+
+	testImplementation(deferred);
+
 };
