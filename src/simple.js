@@ -16,4 +16,23 @@ module.exports = base.extend({
 		return this.status !== 'unfulfilled';
 	},
 
+	fin: function(callback) {
+		var factory = this._factory;
+
+		function handler(end) {
+			var result = callback();
+
+			if (factory.isPromise(result))
+				return result.then(end);
+
+			return end();
+		}
+
+		return this.then(function(value) {
+			return handler(function() { return value });
+		}, function(reason) {
+			return handler(function() { throw reason });
+		});
+	}
+
 });
