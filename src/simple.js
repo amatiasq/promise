@@ -2,7 +2,7 @@
 
 var base = require('./base');
 
-module.exports = base.extend({
+var factory = base.extend({
 
 	isResolved: function() {
 		return this.status === 'fulfilled';
@@ -36,3 +36,21 @@ module.exports = base.extend({
 	}
 
 });
+
+factory.resolved = function(value) {
+	var def = this();
+	def.resolve(value);
+	return def.promise;
+};
+
+factory.rejected = function(reason) {
+	var def = this();
+	def.reject(reason);
+	return def.promise;
+};
+
+factory.all = function() {
+	return this.resolved([]);
+};
+
+module.exports = factory;

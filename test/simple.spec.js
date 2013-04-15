@@ -116,4 +116,103 @@ module.exports = function(deferred) {
 			});
 		});
 	});
+
+	describe('on factory function', function() {
+		describe('when #resolved function is invoked', function() {
+			it('should return a fulfilled promise', function() {
+				var prom = deferred.resolved();
+				assert.ok(deferred.isPromise(prom), 'returned value is not a promise');
+				assert.ok(prom.isResolved(), 'promise is not fulfilled');
+			});
+
+			it('should return a promise fulfilled with the recived value', function() {
+				var value = 'pepe';
+				var clock = sinon.useFakeTimers();
+				var spy = sinon.spy();
+				var prom = deferred.resolved(value);
+				prom.then(spy);
+				clock.tick(10);
+				assert.ok(spy.called, 'the callback was not invoked');
+				assert.ok(spy.calledWithExactly(value), 'promise was not fulfilled with the value');
+				clock.restore();
+			});
+		});
+
+		describe('when #rejected function is invoked', function() {
+			it('should return a rejected promise', function() {
+				var prom = deferred.rejected();
+				assert.ok(deferred.isPromise(prom), 'returned value is not a promise');
+				assert.ok(prom.isRejected(), 'promise is not rejected');
+			});
+
+			it('should return a promise rejected with the recived value as the reason', function() {
+				var value = 'pepe';
+				var clock = sinon.useFakeTimers();
+				var spy = sinon.spy();
+				var prom = deferred.rejected(value);
+				prom.then(null, spy);
+				clock.tick(10);
+				assert.ok(spy.called, 'the callback was not invoked');
+				assert.ok(spy.calledWithExactly(value), 'promise was not rejected with the value');
+				clock.restore();
+			});
+		});
+
+		describe('when #all function is invoked', function() {
+
+			// function testNoArgs() { }
+			// function testPromises() { }
+			// function testMixed() { }
+
+			describe('without arguments', function() {
+				it('should return a promise resolved with an empty array', function() {
+					var clock = sinon.useFakeTimers();
+					var spy = sinon.spy();
+					var result = deferred.all();
+					assert.ok(deferred.isPromise(result), 'returned value is not a promise');
+					result.then(spy);
+					clock.tick(10);
+					assert.ok(spy.calledWith([]));
+				});
+			});
+			describe('with a array of promises', function() {
+				describe('if any promise fails', function() {
+					it('should reject the returned promise with the recived error as the reason');
+				});
+				describe('if all promises succeed', function() {
+					it('should resolve the returned promise with an array of the promises values sorted as they were recived');
+				});
+			});
+			describe('with a array of mixed promises and other values', function() {
+				describe('if any promise fails', function() {
+					it('should reject the returned promise with the recived error as the reason');
+				});
+				describe('if all promises succeed', function() {
+					it('should resolve the returned promise with an array of the promises values and recived values sorted as they were recived');
+				});
+			});
+
+
+			describe('with a empty array', function() {
+				it('should return a promise resolved with an empty array');
+			});
+			describe('with promises as arguments', function() {
+				describe('if any promise fails', function() {
+					it('should reject the returned promise with the recived error as the reason');
+				});
+				describe('if all promises succeed', function() {
+					it('should resolve the returned promise with an array of the promises values sorted as they were recived');
+				});
+
+			});
+			describe('with mixed promises and other values as arguments', function() {
+				describe('if any promise fails', function() {
+					it('should reject the returned promise with the recived error as the reason');
+				});
+				describe('if all promises succeed', function() {
+					it('should resolve the returned promise with an array of the promises values and recived values sorted as they were recived');
+				});
+			});
+		});
+	});
 };
