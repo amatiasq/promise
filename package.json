@@ -8,7 +8,7 @@
 		"esprima": "1.0.x",
 		"jshint": "1.1.x",
 
-		"mocha": "1.9.x",
+		"cucumber": "latest",
 		"sinon": "1.5.x",
 		"assert": "0.4.x",
 		"promise-tests": "*"
