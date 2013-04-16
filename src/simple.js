@@ -49,8 +49,28 @@ factory.rejected = function(reason) {
 	return def.promise;
 };
 
-factory.all = function() {
-	return this.resolved([]);
+factory.all = function(values) {
+	if (!(values instanceof Array))
+		values = Array.prototype.slice.call(arguments);
+
+	if (!values.length)
+		return this.resolved([]);
+
+	var result = this();
+	var outputs = [];
+	var promises = values.map(this.when.bind(this));
+
+	promises.forEach(function(promise, index) {
+		promise.then(function(output) {
+			outputs[index] = output;
+
+			if (promises.every(function(prom) { return prom.isResolved() }))
+				result.resolve(outputs);
+
+		}, result.reject);
+	});
+
+	return result.promise;
 };
 
 module.exports = factory;
