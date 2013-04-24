@@ -1,20 +1,22 @@
 {
 	"name": "prom.js",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "A promise/A+ implementation",
 	"author": "A. Matías Quezada <amatiasq@gmail.com>",
 	"dependencies": {},
 	"devDependencies": {
 		"esprima": "1.0.x",
-		"jshint": "1.1.x",
+
+		"grunt": "latest",
+		"grunt-requirejs": "latest",
+		"grunt-contrib-jshint": "latest",
 
 		"cucumber": "latest",
 		"sinon": "1.5.x",
 		"assert": "0.4.x",
 		"promise-tests": "*"
-
 	},
 	"scripts": {
-		"test": "esvalidate src/* test/* && jshint src test && mocha test/run # promise-tests all test/promise-tests-adapter && mocha test/run"
+		"test": "esvalidate src/* test/* && grunt jshint && mocha test/run # promise-tests all test/promise-tests-adapter && mocha test/run"
 	}
 }

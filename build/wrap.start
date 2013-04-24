@@ -1,0 +1,26 @@
+(function(root) {
+
+var loaded = {};
+var mods = {};
+var last;
+
+function require(a) {
+	return mods[a.replace(/^\.\//, '')];
+}
+
+function load(name) {
+	if (loaded[name] !== true)
+		return;
+
+	mods[name] = mods[name]();
+	loaded[name] = true;
+}
+
+function define(name, deps, mod) {
+	last = name;
+	mod = mod || deps;
+	var module = { exports: {} };
+	if (deps instanceof Array) deps.map(load);
+	var result = mod(require, module.exports, module);
+	mods[name] = result || module.exports;
+}
