@@ -206,5 +206,5 @@ var factory = extend.call({
 module.exports = factory;
 
 });
-root.promise = require(last);
+root.deferred = require(last);
 })(this)

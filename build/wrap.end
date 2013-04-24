@@ -1,2 +1,2 @@
-root.promise = require(last);
+root.deferred = require(last);
 })(this)

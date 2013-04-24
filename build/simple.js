@@ -285,5 +285,5 @@ factory.all = function(values) {
 module.exports = factory;
 
 });
-root.promise = require(last);
+root.deferred = require(last);
 })(this)
