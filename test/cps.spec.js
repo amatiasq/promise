@@ -37,22 +37,22 @@ module.exports = function(deferred) {
 
 				describe('when invoked without arguments', function() {
 					it('should fullfill the promise', function() {
-						assert.ok(!prom.isResolved());
+						assert.ok(!prom.isResolved(), 'promise was resolved before execution');
 						callback();
-						assert.ok(prom.isResolved());
+						assert.ok(prom.isResolved(), 'promise is not resolved');
 					});
 				});
 
 				describe('when invoked with a truthy argument', function() {
 					it('should reject the promise with this argument as the reason', function() {
-						assert.ok(!prom.isRejected());
+						assert.ok(!prom.isRejected(), 'promise was rejected before execution');
 						prom.then(null, spy);
 
 						callback(value);
 						clock.tick(10);
 
-						assert.ok(spy.called);
-						assert.ok(spy.calledWithExactly(value));
+						assert.ok(spy.called, 'callback was not called');
+						assert.ok(spy.calledWithExactly(value), 'the value was not passed to the callback');
 					});
 				});
 
@@ -63,8 +63,8 @@ module.exports = function(deferred) {
 							callback(null, value);
 							clock.tick(10);
 
-							assert.ok(spy.called);
-							assert.ok(spy.calledWithExactly(value));
+							assert.ok(spy.called, 'callback was not called');
+							assert.ok(spy.calledWithExactly(value), 'the value was not passed to the callback');
 						});
 					});
 				});
@@ -73,6 +73,69 @@ module.exports = function(deferred) {
 	});
 
 	describe('when static adapt method is invoked', function() {
+		it('should return a new object with the same interface as the object recived by argument', function() {
+			var original = {
+				a: 1,
+				b: 'hola',
+				d: {},
+				c: function() { }
+			};
 
+			var wrapper = deferred.adapt(original);
+
+			Object.keys(original).forEach(function(prop) {
+				assert.ok(typeof original[prop] === typeof wrapper[prop]);
+			});
+		});
+
+		describe('when a method is invoked on it\'s result', function() {
+
+			describe('without argument', function() {
+				it('should call the original object\'s function adding a function argument', function() {
+					var spy = sinon.spy();
+					var original = { a: spy };
+					var wrapper = deferred.adapt(original);
+
+					assert.ok(!spy.called, 'original function was called before wrapper was invoked');
+					wrapper.a();
+					assert.ok(spy.called, 'original function was not called');
+					assert.ok(typeof spy.lastCall.args[0] === 'function', 'original function did not recive the argument');
+				});
+			});
+
+			describe('with arguments', function() {
+				it('should call the original object\'s function adding a extra function argument', function() {
+					var arg1 = 'pepe';
+					var arg2 = 42;
+					var spy = sinon.spy();
+					var original = { a: spy };
+					var wrapper = deferred.adapt(original);
+
+					assert.ok(!spy.called, 'original function was called before wrapper was invoked');
+					wrapper.a(arg1, arg2);
+					assert.ok(spy.called, 'original function was not called');
+					assert.ok(spy.lastCall.args[0] === arg1 && spy.lastCall.args[1] === arg2, 'arguments are not passed');
+					assert.ok(typeof spy.lastCall.args[2] === 'function', 'original function did not recive the extra argument');
+				});
+			});
+		});
+	});
+
+	describe('when promise\'s adapt method is invoked', function() {
+		it('should invoke static adapt method passing promise\'s result', function() {
+			var value = {};
+			var mock = sinon.mock(deferred);
+			var clock = sinon.useFakeTimers();
+			mock.expects('adapt').withExactArgs(value);
+
+			var def = deferred();
+			def.promise.adapt();
+			def.resolve(value);
+			clock.tick(10);
+
+			mock.verify();
+			mock.restore();
+			clock.restore();
+		});
 	});
 };
