@@ -1,4 +1,4 @@
-//jshint maxlen:200, unused:false
+//jshint maxlen:200
 'use strict';
 
 var sinon = require('sinon');
