@@ -88,6 +88,12 @@ module.exports = function(deferred) {
 			});
 		});
 
+		it('should wrap even inherited properties', function() {
+			var value = 'cosa';
+			var wrapper = deferred.adapt(Object.create({ sample: value }));
+			assert.equal(wrapper.sample, value);
+		});
+
 		describe('when a method is invoked on it\'s result', function() {
 
 			describe('without argument', function() {

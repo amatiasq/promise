@@ -28,24 +28,20 @@ var factory = simple.extend({
 
 var toArray = Function.prototype.call.bind([].slice);
 
+function wrap(_factory, fn) {
+	return function promiseAdapter() {
+		var def = _factory();
+		fn.apply(this, toArray(arguments).concat(def.callback()));
+		return def.promise;
+	};
+}
+
 factory.adapt = function(target) {
-	var _factory = this;
-	var result = {};
+	var result = Object.create(target);
 
-	Object.keys(target).forEach(function(prop) {
-		var value = target[prop];
-		var descriptor = Object.getOwnPropertyDescriptor(target, prop);
-
-		if (typeof value !== 'function')
-			return Object.defineProperty(result, prop, descriptor);
-
-		result[prop] = function promiseAdapter() {
-			var def = _factory();
-			var args = toArray(arguments);
-			value.apply(target, args.concat(def.callback()));
-			return def.promise;
-		};
-	});
+	for (var prop in target)
+		if (typeof target[prop] === 'function')
+			target[prop] = wrap(this, target[prop]);
 
 	return result;
 };
