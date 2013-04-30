@@ -1,6 +1,6 @@
 {
 	"name": "prom.js",
-	"version": "0.2.1",
+	"version": "0.3.0",
 	"description": "A promise/A+ implementation",
 	"author": "A. Matías Quezada <amatiasq@gmail.com>",
 	"dependencies": {},
@@ -13,10 +13,9 @@
 
 		"mocha": "1.9.x",
 		"sinon": "1.5.x",
-		"assert": "0.4.x",
-		"promise-tests": "*"
+		"assert": "0.4.x"
 	},
 	"scripts": {
-		"test": "esvalidate src/* test/* && grunt jshint && mocha test/run # promise-tests all test/promise-tests-adapter && mocha test/run"
+		"test": "esvalidate src/* test/* && grunt jshint && mocha test/run"
 	}
 }
