@@ -51,6 +51,29 @@ module.exports = function(grunt) {
             endFile: 'build/wrap.end'
           }
         }
+      },
+      cpsMin: {
+        options: {
+          baseUrl: 'src.requirejs',
+          name: 'cps',
+          out: 'build/cps.min.js',
+          wrap: {
+            startFile: 'build/wrap.start',
+            endFile: 'build/wrap.end'
+          }
+        }
+      },
+      cps: {
+        options: {
+          baseUrl: 'src.requirejs',
+          name: 'cps',
+          optimize: 'none',
+          out: 'build/cps.js',
+          wrap: {
+            startFile: 'build/wrap.start',
+            endFile: 'build/wrap.end'
+          }
+        }
       }
     },
 
