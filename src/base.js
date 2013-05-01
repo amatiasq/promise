@@ -29,6 +29,10 @@ function bind(def, value) {
 
 function wrap(def, callback) {
 	return function(value) {
+
+		if (def._factory.debug)
+			return bind(def, callback(value));
+
 		try {
 			bind(def, callback(value));
 		} catch(err) {

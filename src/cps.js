@@ -28,10 +28,10 @@ var factory = simple.extend({
 
 var toArray = Function.prototype.call.bind([].slice);
 
-function wrap(_factory, fn) {
+function wrap(_factory, target, fn) {
 	return function promiseAdapter() {
 		var def = _factory();
-		fn.apply(this, toArray(arguments).concat(def.callback()));
+		fn.apply(target, toArray(arguments).concat(def.callback()));
 		return def.promise;
 	};
 }
@@ -41,7 +41,7 @@ factory.adapt = function(target) {
 
 	for (var prop in target)
 		if (typeof target[prop] === 'function')
-			target[prop] = wrap(this, target[prop]);
+			result[prop] = wrap(this, target, target[prop]);
 
 	return result;
 };
